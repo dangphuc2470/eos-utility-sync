@@ -1,26 +1,17 @@
-# Canon EOS Utility Config Sync
+# canon_sync
 
-A set of PowerShell scripts to synchronize Canon EOS Utility sequence numbers (File Name Numbers) and settings across multiple computers and app versions using Google Drive.
+A new Flutter project.
 
-## Features
-- **Cross-Device & Cross-Version Sync**: Keep settings consistent everywhere.
-- **Master Config Strategy**: Merges all version configs into one source of truth on Drive.
-- **Two Operating Modes**:
-    - **Run Once (Default)**: Syncs only when you log in to Windows. Minimal resource usage.
-    - **Continuous (Daemon)**: Stays active in the background and syncs every X seconds. Ideal if you switch between computers frequently without logging off.
+## Getting Started
 
-## Installation
+This project is a starting point for a Flutter application.
 
-1. Create a folder: `%LOCALAPPDATA%\Canon_INC\`
-2. Place `Sync-CanonConfig.ps1` and `Setup-CanonSync.ps1` inside it.
-3. Right-click `Setup-CanonSync.ps1` and select **Run with PowerShell**.
-4. During setup, choose your preferred mode:
-    - Press `1` for Run-Once mode.
-    - Press `2` for Continuous (Daemon) mode.
+A few resources to get you started if this is your first Flutter project:
 
-## Customization
-If you want to change the sync interval in Daemon mode, edit the shortcut created in your `Startup` folder or modify the `-Interval` value in the script. Default is 60 seconds.
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-## Requirements
-- Windows 10/11
-- Google Drive for Desktop installed (Default path: `G:\My Drive`)
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
