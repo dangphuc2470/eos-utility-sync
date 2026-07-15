@@ -351,6 +351,7 @@ class ConfigService {
         if (!appName.contains('EOS_Utility')) continue;
 
         // 1. Check for legacy folder format (e.g. EOS_Utility_3_5d2)
+        bool handledAsLegacy = false;
         if (appName.startsWith('EOS_Utility_') &&
             appName.contains(RegExp(r'_[^_]+$'))) {
           final parts = appName.split('_');
@@ -366,10 +367,13 @@ class ConfigService {
                   'alias': aliasVal.toLowerCase(),
                   'path': legacyFile.path,
                 });
+                handledAsLegacy = true;
               }
             }
           }
         }
+
+        if (handledAsLegacy) continue;
 
         // 2. Direct active file (e.g. EOS_Utility_3/user.config)
         final activeFile = File('${appDir.path}\\user.config');

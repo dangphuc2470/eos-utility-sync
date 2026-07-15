@@ -159,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settings == null) return null;
       return ConfigSlot(
         id: vs.key,
-        name: '${_selectedIsRemote ? "Remote:" : "Local:"} ${vs.displayName}',
+        name:
+            '${_selectedIsRemote ? "Remote:" : "Local:"} ${vs.displayName} (${vs.branchName})',
         lastModified: _selectedIsRemote
             ? (vs.remoteLastModified ?? DateTime.now())
             : (vs.localLastModified ?? DateTime.now()),
@@ -306,13 +307,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final alias = parts[1];
 
       String displayName = '';
-      if (key == 'EOS_Utility') displayName = 'EOS Utility';
-      if (key == 'EOS_Utility_2') displayName = 'EOS Utility 2';
-      if (key == 'EOS_Utility_3') displayName = 'EOS Utility 3';
-
-      if (alias != 'active') {
-        displayName += ' ($alias)';
-      }
+      if (key == 'EOS_Utility')
+        displayName = 'EOS Utility';
+      else if (key == 'EOS_Utility_2')
+        displayName = 'EOS Utility 2';
+      else if (key == 'EOS_Utility_3')
+        displayName = 'EOS Utility 3';
+      else
+        displayName = key;
 
       final vs = VersionState(key: key, displayName: displayName, alias: alias);
 
@@ -686,7 +688,9 @@ class _HomeScreenState extends State<HomeScreen> {
         appFilter: driveFolder,
       );
       await _loadAll();
-      _showStatus('Pushed "${version.displayName}" to Drive!');
+      _showStatus(
+        'Pushed "${version.displayName} (${version.branchName})" to Drive!',
+      );
     } catch (e) {
       _showStatus('Push failed: $e', error: true);
     } finally {
@@ -707,7 +711,9 @@ class _HomeScreenState extends State<HomeScreen> {
         fallbackPath: path,
       );
       await _loadAll();
-      _showStatus('Pulled "${version.displayName}" & applied to PC!');
+      _showStatus(
+        'Pulled "${version.displayName} (${version.branchName})" & applied to PC!',
+      );
     } catch (e) {
       _showStatus('Pull failed: $e', error: true);
     } finally {
@@ -1327,20 +1333,48 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final sources = _versions.expand((v) {
       final list = <Map<String, dynamic>>[];
+      String cleanDisplayName = '';
+      if (v.key == 'EOS_Utility')
+        cleanDisplayName = 'EOS Utility';
+      else if (v.key == 'EOS_Utility_2')
+        cleanDisplayName = 'EOS Utility 2';
+      else if (v.key == 'EOS_Utility_3')
+        cleanDisplayName = 'EOS Utility 3';
+      else
+        cleanDisplayName = v.key;
+
       if (v.localExists &&
           !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
+        final prefix = v.localSettings?['FileNamePrefix'] ?? 'IMG';
+        final count = v.localSettings?['FileNameNumber'] ?? '0';
+        final sepVal = v.localSettings?['FileNameSeparator'] ?? '0';
+        String sep = '_';
+        if (sepVal == '1') sep = '-';
+        if (sepVal == '2') sep = '';
+        final fileRep = '$prefix$sep$count';
+
         list.add({
-          'label': '${v.displayName} (${v.branchName}) [Local]',
+          'label': '$cleanDisplayName (${v.branchName}) [Local] ($fileRep)',
           'settings': v.localSettings,
-          'sourceName': '${v.displayName} (${v.branchName}) [Local]',
+          'sourceName':
+              '$cleanDisplayName (${v.branchName}) [Local] ($fileRep)',
         });
       }
       if (v.remoteExists &&
           !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
+        final prefix = v.remoteSettings?['FileNamePrefix'] ?? 'IMG';
+        final count = v.remoteSettings?['FileNameNumber'] ?? '0';
+        final sepVal = v.remoteSettings?['FileNameSeparator'] ?? '0';
+        String sep = '_';
+        if (sepVal == '1') sep = '-';
+        if (sepVal == '2') sep = '';
+        final fileRep = '$prefix$sep$count';
+
         list.add({
-          'label': '${v.displayName} (${v.branchName}) [Drive]',
+          'label': '$cleanDisplayName (${v.branchName}) [Drive] ($fileRep)',
           'settings': v.remoteSettings,
-          'sourceName': '${v.displayName} (${v.branchName}) [Drive]',
+          'sourceName':
+              '$cleanDisplayName (${v.branchName}) [Drive] ($fileRep)',
         });
       }
       return list;
@@ -1633,7 +1667,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Compare & Sync: ${version.displayName}',
+                    'Compare & Sync: ${version.displayName} (${version.branchName})',
                     style: const TextStyle(
                       color: AppTheme.textPrimary,
                       fontSize: 18,
@@ -3263,7 +3297,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       Text(
-                        version.displayName,
+                        version.alias == 'active'
+                            ? version.displayName
+                            : version.alias,
                         style: TextStyle(
                           color: exists
                               ? AppTheme.textPrimary
