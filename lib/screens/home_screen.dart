@@ -84,6 +84,19 @@ class VersionState {
 
 // ─────────────────────────────────────────────────────────────────
 
+/// Extract plain custom text segments from a FileCustomize value (pipe-separated).
+/// Only returns non-empty, non-token segments (those that don't look like &lt;N&gt; codes).
+String _extractCustomText(String? value) {
+  if (value == null || value.isEmpty) return '';
+  final parts = value.split('|');
+  final texts = parts.where(
+    (s) => s.isNotEmpty && !RegExp(r'^<\d+>$').hasMatch(s),
+  );
+  return texts.join('').trim();
+}
+
+// ─────────────────────────────────────────────────────────────────
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -1363,6 +1376,19 @@ class _HomeScreenState extends State<HomeScreen> {
         if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
           listExtra.add('Prefix: $sourcePrefix');
         }
+        // Check custom text in FileCustomize1/2/3 vs target
+        for (final custKey in [
+          'FileCustomize1',
+          'FileCustomize2',
+          'FileCustomize3',
+        ]) {
+          final srcText = _extractCustomText(sourceSettings[custKey]);
+          final tgtText = _extractCustomText(targetSettings[custKey]);
+          if (srcText.isNotEmpty && srcText != tgtText) {
+            listExtra.add(srcText);
+            break; // only show one distinguishing custom text
+          }
+        }
 
         final extraRep = listExtra.isNotEmpty
             ? ' (${listExtra.join(", ")})'
@@ -1387,6 +1413,19 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
           listExtra.add('Prefix: $sourcePrefix');
+        }
+        // Check custom text in FileCustomize1/2/3 vs target
+        for (final custKey in [
+          'FileCustomize1',
+          'FileCustomize2',
+          'FileCustomize3',
+        ]) {
+          final srcText = _extractCustomText(sourceSettings[custKey]);
+          final tgtText = _extractCustomText(targetSettings[custKey]);
+          if (srcText.isNotEmpty && srcText != tgtText) {
+            listExtra.add(srcText);
+            break;
+          }
         }
 
         final extraRep = listExtra.isNotEmpty
