@@ -1215,7 +1215,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppTheme.accent,
               size: 18,
             ),
-            alignmentOffset: const Offset(-6, 0),
+            alignmentOffset: const Offset(10, 10),
             menuStyle: MenuStyle(
               backgroundColor: MaterialStateProperty.all(AppTheme.surface),
               surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
@@ -1282,7 +1282,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppTheme.accent,
               size: 18,
             ),
-            alignmentOffset: const Offset(-6, 0),
+            alignmentOffset: const Offset(10, 10),
             menuStyle: MenuStyle(
               backgroundColor: MaterialStateProperty.all(AppTheme.surface),
               surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
