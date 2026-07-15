@@ -1331,6 +1331,12 @@ class _HomeScreenState extends State<HomeScreen> {
     VersionState targetVersion,
     ButtonStyle menuButtonStyle,
   ) {
+    final targetSettings =
+        targetVersion.localSettings ?? targetVersion.remoteSettings ?? {};
+    final targetCount =
+        int.tryParse(targetSettings['FileNameNumber'] ?? '0') ?? 0;
+    final targetPrefix = targetSettings['FileNamePrefix'] ?? 'IMG';
+
     final sources = _versions.expand((v) {
       final list = <Map<String, dynamic>>[];
       String cleanDisplayName = '';
@@ -1345,36 +1351,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (v.localExists &&
           !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
-        final prefix = v.localSettings?['FileNamePrefix'] ?? 'IMG';
-        final count = v.localSettings?['FileNameNumber'] ?? '0';
-        final sepVal = v.localSettings?['FileNameSeparator'] ?? '0';
-        String sep = '_';
-        if (sepVal == '1') sep = '-';
-        if (sepVal == '2') sep = '';
-        final fileRep = '$prefix$sep$count';
+        final sourceSettings = v.localSettings ?? {};
+        final sourceCount =
+            int.tryParse(sourceSettings['FileNameNumber'] ?? '0') ?? 0;
+        final sourcePrefix = sourceSettings['FileNamePrefix'] ?? 'IMG';
+
+        final listExtra = <String>[];
+        if (sourceCount != targetCount) {
+          listExtra.add('Count: $sourceCount');
+        }
+        if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
+          listExtra.add('Prefix: $sourcePrefix');
+        }
+
+        final extraRep = listExtra.isNotEmpty
+            ? ' (${listExtra.join(", ")})'
+            : '';
 
         list.add({
-          'label': '$cleanDisplayName (${v.branchName}) [Local] ($fileRep)',
+          'label': '$cleanDisplayName (${v.branchName}) [Local]$extraRep',
           'settings': v.localSettings,
-          'sourceName':
-              '$cleanDisplayName (${v.branchName}) [Local] ($fileRep)',
+          'sourceName': '$cleanDisplayName (${v.branchName}) [Local]$extraRep',
         });
       }
       if (v.remoteExists &&
           !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
-        final prefix = v.remoteSettings?['FileNamePrefix'] ?? 'IMG';
-        final count = v.remoteSettings?['FileNameNumber'] ?? '0';
-        final sepVal = v.remoteSettings?['FileNameSeparator'] ?? '0';
-        String sep = '_';
-        if (sepVal == '1') sep = '-';
-        if (sepVal == '2') sep = '';
-        final fileRep = '$prefix$sep$count';
+        final sourceSettings = v.remoteSettings ?? {};
+        final sourceCount =
+            int.tryParse(sourceSettings['FileNameNumber'] ?? '0') ?? 0;
+        final sourcePrefix = sourceSettings['FileNamePrefix'] ?? 'IMG';
+
+        final listExtra = <String>[];
+        if (sourceCount != targetCount) {
+          listExtra.add('Count: $sourceCount');
+        }
+        if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
+          listExtra.add('Prefix: $sourcePrefix');
+        }
+
+        final extraRep = listExtra.isNotEmpty
+            ? ' (${listExtra.join(", ")})'
+            : '';
 
         list.add({
-          'label': '$cleanDisplayName (${v.branchName}) [Drive] ($fileRep)',
+          'label': '$cleanDisplayName (${v.branchName}) [Drive]$extraRep',
           'settings': v.remoteSettings,
-          'sourceName':
-              '$cleanDisplayName (${v.branchName}) [Drive] ($fileRep)',
+          'sourceName': '$cleanDisplayName (${v.branchName}) [Drive]$extraRep',
         });
       }
       return list;
