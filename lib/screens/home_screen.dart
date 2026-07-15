@@ -1350,98 +1350,250 @@ class _HomeScreenState extends State<HomeScreen> {
         int.tryParse(targetSettings['FileNameNumber'] ?? '0') ?? 0;
     final targetPrefix = targetSettings['FileNamePrefix'] ?? 'IMG';
 
-    final sources = _versions.expand((v) {
-      final list = <Map<String, dynamic>>[];
-      String cleanDisplayName = '';
-      if (v.key == 'EOS_Utility')
-        cleanDisplayName = 'EOS Utility';
-      else if (v.key == 'EOS_Utility_2')
-        cleanDisplayName = 'EOS Utility 2';
-      else if (v.key == 'EOS_Utility_3')
-        cleanDisplayName = 'EOS Utility 3';
-      else
-        cleanDisplayName = v.key;
+    // Helper: get clean app name
+    String cleanName(String key) {
+      if (key == 'EOS_Utility') return 'EOS Utility';
+      if (key == 'EOS_Utility_2') return 'EOS Utility 2';
+      if (key == 'EOS_Utility_3') return 'EOS Utility 3';
+      return key;
+    }
 
-      if (v.localExists &&
-          !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
-        final sourceSettings = v.localSettings ?? {};
-        final sourceCount =
-            int.tryParse(sourceSettings['FileNameNumber'] ?? '0') ?? 0;
-        final sourcePrefix = sourceSettings['FileNamePrefix'] ?? 'IMG';
-
-        final listExtra = <String>[];
-        if (sourceCount != targetCount) {
-          listExtra.add('Count: $sourceCount');
-        }
-        if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
-          listExtra.add('Prefix: $sourcePrefix');
-        }
-        // Check custom text in FileCustomize1/2/3 vs target
-        for (final custKey in [
-          'FileCustomize1',
-          'FileCustomize2',
-          'FileCustomize3',
-        ]) {
-          final srcText = _extractCustomText(sourceSettings[custKey]);
-          final tgtText = _extractCustomText(targetSettings[custKey]);
-          if (srcText.isNotEmpty && srcText != tgtText) {
-            listExtra.add(srcText);
-            break; // only show one distinguishing custom text
-          }
-        }
-
-        final extraRep = listExtra.isNotEmpty
-            ? ' (${listExtra.join(", ")})'
-            : '';
-
-        list.add({
-          'label': '$cleanDisplayName (${v.branchName}) [Local]$extraRep',
-          'settings': v.localSettings,
-          'sourceName': '$cleanDisplayName (${v.branchName}) [Local]$extraRep',
-        });
+    // Helper: build list of detail strings relative to target
+    List<String> buildDetails(Map<String, String> sourceSettings) {
+      final details = <String>[];
+      final sourceCount =
+          int.tryParse(sourceSettings['FileNameNumber'] ?? '0') ?? 0;
+      final sourcePrefix = sourceSettings['FileNamePrefix'] ?? 'IMG';
+      if (sourceCount != targetCount) details.add('Count: $sourceCount');
+      if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
+        details.add('Prefix: $sourcePrefix');
       }
-      if (v.remoteExists &&
-          !(v.key == targetVersion.key && v.alias == targetVersion.alias)) {
-        final sourceSettings = v.remoteSettings ?? {};
-        final sourceCount =
-            int.tryParse(sourceSettings['FileNameNumber'] ?? '0') ?? 0;
-        final sourcePrefix = sourceSettings['FileNamePrefix'] ?? 'IMG';
-
-        final listExtra = <String>[];
-        if (sourceCount != targetCount) {
-          listExtra.add('Count: $sourceCount');
+      for (final custKey in [
+        'FileCustomize1',
+        'FileCustomize2',
+        'FileCustomize3',
+      ]) {
+        final srcText = _extractCustomText(sourceSettings[custKey]);
+        final tgtText = _extractCustomText(targetSettings[custKey]);
+        if (srcText.isNotEmpty && srcText != tgtText) {
+          details.add(srcText);
+          break;
         }
-        if (sourcePrefix != targetPrefix && sourcePrefix != 'IMG') {
-          listExtra.add('Prefix: $sourcePrefix');
-        }
-        // Check custom text in FileCustomize1/2/3 vs target
-        for (final custKey in [
-          'FileCustomize1',
-          'FileCustomize2',
-          'FileCustomize3',
-        ]) {
-          final srcText = _extractCustomText(sourceSettings[custKey]);
-          final tgtText = _extractCustomText(targetSettings[custKey]);
-          if (srcText.isNotEmpty && srcText != tgtText) {
-            listExtra.add(srcText);
-            break;
-          }
-        }
-
-        final extraRep = listExtra.isNotEmpty
-            ? ' (${listExtra.join(", ")})'
-            : '';
-
-        list.add({
-          'label': '$cleanDisplayName (${v.branchName}) [Drive]$extraRep',
-          'settings': v.remoteSettings,
-          'sourceName': '$cleanDisplayName (${v.branchName}) [Drive]$extraRep',
-        });
       }
-      return list;
-    }).toList();
+      return details;
+    }
 
-    if (sources.isEmpty) {
+    // Build rich menu item widget
+    Widget buildItem({
+      required String appKey,
+      required String alias,
+      required bool isLocal,
+      required Map<String, String> settings,
+      required List<String> details,
+      required bool isCurrentlyActive,
+      required VoidCallback? onPressed,
+    }) {
+      return MenuItemButton(
+        style: menuButtonStyle,
+        onPressed: onPressed,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              isLocal
+                  ? Icons.insert_drive_file_outlined
+                  : Icons.cloud_queue_rounded,
+              size: 16,
+              color: AppTheme.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        cleanName(appKey),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (alias != 'active') ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 5),
+                          child: Text(
+                            '|',
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentSoft,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppTheme.accent.withOpacity(0.25),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            alias,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (isCurrentlyActive) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'ACTIVE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (details.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        details.join('  ·  '),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final items = <Widget>[];
+    bool hadAny = false;
+
+    for (final v in _versions) {
+      if (v.key == targetVersion.key && v.alias == targetVersion.alias)
+        continue;
+
+      final isActiveBranch =
+          _activeAliases[v.key] == v.alias ||
+          (v.alias == 'active' && _activeAliases[v.key] == null);
+
+      if (v.localExists) {
+        hadAny = true;
+        final settings = v.localSettings ?? {};
+        final details = buildDetails(settings);
+        items.add(
+          buildItem(
+            appKey: v.key,
+            alias: v.alias,
+            isLocal: true,
+            settings: settings,
+            details: details,
+            isCurrentlyActive: isActiveBranch,
+            onPressed: () async {
+              setState(() => _loading = true);
+              try {
+                final path = await _getOrCreateLocalPath(
+                  targetVersion.key,
+                  targetVersion.alias,
+                );
+                await _service.applySettings(
+                  settings: settings,
+                  localBase: _localBase,
+                  appFilter: targetVersion.key,
+                  alias: targetVersion.alias,
+                  fallbackPath: path,
+                );
+                final lbl = '${cleanName(v.key)} (${v.branchName}) [Local]';
+                _showStatus(
+                  'Synced from "$lbl" into "${targetVersion.alias}"!',
+                );
+                await _loadAll();
+              } catch (e) {
+                _showStatus('Failed to sync config: $e', error: true);
+              } finally {
+                setState(() => _loading = false);
+              }
+            },
+          ),
+        );
+      }
+
+      if (v.remoteExists) {
+        hadAny = true;
+        final settings = v.remoteSettings ?? {};
+        final details = buildDetails(settings);
+        items.add(
+          buildItem(
+            appKey: v.key,
+            alias: v.alias,
+            isLocal: false,
+            settings: settings,
+            details: details,
+            isCurrentlyActive: false,
+            onPressed: () async {
+              setState(() => _loading = true);
+              try {
+                final path = await _getOrCreateLocalPath(
+                  targetVersion.key,
+                  targetVersion.alias,
+                );
+                await _service.applySettings(
+                  settings: settings,
+                  localBase: _localBase,
+                  appFilter: targetVersion.key,
+                  alias: targetVersion.alias,
+                  fallbackPath: path,
+                );
+                final lbl = '${cleanName(v.key)} (${v.branchName}) [Drive]';
+                _showStatus(
+                  'Synced from "$lbl" into "${targetVersion.alias}"!',
+                );
+                await _loadAll();
+              } catch (e) {
+                _showStatus('Failed to sync config: $e', error: true);
+              } finally {
+                setState(() => _loading = false);
+              }
+            },
+          ),
+        );
+      }
+    }
+
+    if (!hadAny) {
       return [
         MenuItemButton(
           style: menuButtonStyle,
@@ -1458,42 +1610,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
 
-    return sources.map((src) {
-      return MenuItemButton(
-        style: menuButtonStyle,
-        onPressed: () async {
-          final Map<String, String> sourceSettings = Map<String, String>.from(
-            src['settings']!,
-          );
-          final String sourceLabel = src['sourceName']!;
-
-          setState(() => _loading = true);
-          try {
-            final path = await _getOrCreateLocalPath(
-              targetVersion.key,
-              targetVersion.alias,
-            );
-            await _service.applySettings(
-              settings: sourceSettings,
-              localBase: _localBase,
-              appFilter: targetVersion.key,
-              alias: targetVersion.alias,
-              fallbackPath: path,
-            );
-
-            _showStatus(
-              'Synced settings from "$sourceLabel" into "${targetVersion.alias}"!',
-            );
-            await _loadAll();
-          } catch (e) {
-            _showStatus('Failed to sync config: $e', error: true);
-          } finally {
-            setState(() => _loading = false);
-          }
-        },
-        child: Text(src['label']!, style: const TextStyle(fontSize: 13)),
-      );
-    }).toList();
+    return items;
   }
 
   Future<void> _createBranch(VersionState baseVersion) async {
