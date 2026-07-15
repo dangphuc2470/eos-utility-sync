@@ -114,8 +114,8 @@ class ConfigService {
     try {
       for (final appDir in baseDir.listSync().whereType<Directory>()) {
         final appName = appDir.uri.pathSegments.where((s) => s.isNotEmpty).last;
-        // Only accept valid EOS_Utility folder names; reject VirtualStore URL/hash variants
-        if (!appName.startsWith('EOS_Utility') ||
+        // Only accept EOS_Utility-related folders; reject Windows VirtualStore URL/hash variants
+        if (!appName.contains('EOS_Utility') ||
             appName.contains('_Url_') ||
             appName.contains('_Hash_'))
           continue;
@@ -352,8 +352,8 @@ class ConfigService {
     try {
       for (final appDir in baseDir.listSync().whereType<Directory>()) {
         final appName = appDir.uri.pathSegments.where((s) => s.isNotEmpty).last;
-        // Only accept valid EOS_Utility folder names; reject VirtualStore URL/hash variants
-        if (!appName.startsWith('EOS_Utility') ||
+        // Only accept EOS_Utility-related folders; reject Windows VirtualStore URL/hash variants
+        if (!appName.contains('EOS_Utility') ||
             appName.contains('_Url_') ||
             appName.contains('_Hash_'))
           continue;
