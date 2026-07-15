@@ -114,8 +114,10 @@ class ConfigService {
     try {
       for (final appDir in baseDir.listSync().whereType<Directory>()) {
         final appName = appDir.uri.pathSegments.where((s) => s.isNotEmpty).last;
-        // Only accept known EOS_Utility folder names; reject URL/hash variants (e.g. EOS_Utility.exe_Url_...)
-        if (!appName.startsWith('EOS_Utility') || appName.contains('.'))
+        // Only accept valid EOS_Utility folder names; reject VirtualStore URL/hash variants
+        if (!appName.startsWith('EOS_Utility') ||
+            appName.contains('_Url_') ||
+            appName.contains('_Hash_'))
           continue;
 
         for (final versionDir in appDir.listSync().whereType<Directory>()) {
@@ -350,8 +352,10 @@ class ConfigService {
     try {
       for (final appDir in baseDir.listSync().whereType<Directory>()) {
         final appName = appDir.uri.pathSegments.where((s) => s.isNotEmpty).last;
-        // Only accept known EOS_Utility folder names; reject URL/hash variants
-        if (!appName.startsWith('EOS_Utility') || appName.contains('.'))
+        // Only accept valid EOS_Utility folder names; reject VirtualStore URL/hash variants
+        if (!appName.startsWith('EOS_Utility') ||
+            appName.contains('_Url_') ||
+            appName.contains('_Hash_'))
           continue;
 
         // 1. Check for legacy folder format (e.g. EOS_Utility_3_5d2)
