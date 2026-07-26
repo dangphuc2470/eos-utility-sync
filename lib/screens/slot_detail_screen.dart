@@ -75,7 +75,7 @@ class _SlotDetailScreenState extends State<SlotDetailScreen> {
   }
 
   String reconstructCustomizeValue(List<String> segments) {
-    return segments.join('|') + '|';
+    return '${segments.join('|')}|';
   }
 
   void _checkForChanges() {
@@ -152,8 +152,9 @@ class _SlotDetailScreenState extends State<SlotDetailScreen> {
       final path = widget.slot.sourcePath;
       String selectedApp = 'EOS_Utility_3';
       if (path != null) {
-        if (path.contains('EOS_Utility_3')) selectedApp = 'EOS_Utility_3';
-        else if (path.contains('EOS_Utility_2')) selectedApp = 'EOS_Utility_2';
+        if (path.contains('EOS_Utility_3')) {
+          selectedApp = 'EOS_Utility_3';
+        } else if (path.contains('EOS_Utility_2')) selectedApp = 'EOS_Utility_2';
         else if (path.contains('EOS_Utility')) selectedApp = 'EOS_Utility';
       }
       
@@ -443,7 +444,7 @@ class _SlotDetailScreenState extends State<SlotDetailScreen> {
             final selectedType = segTypes[index];
             final segVal = segments[index];
 
-            final controllerKey = '${key}_seg_${index}';
+            final controllerKey = '${key}_seg_$index';
             final controller = _getController(controllerKey, selectedType == 'custom' ? segVal : '');
 
             return Padding(
@@ -469,7 +470,7 @@ class _SlotDetailScreenState extends State<SlotDetailScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                      value: tagOptions.containsKey(selectedType) ? selectedType : 'custom',
+                      initialValue: tagOptions.containsKey(selectedType) ? selectedType : 'custom',
                       dropdownColor: AppTheme.surface,
                       style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                       decoration: const InputDecoration(
@@ -611,7 +612,7 @@ class _SlotDetailScreenState extends State<SlotDetailScreen> {
     return _buildRowWrapper(
       labelText: _formatKey(key),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         dropdownColor: AppTheme.surface,
         style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
         decoration: const InputDecoration(

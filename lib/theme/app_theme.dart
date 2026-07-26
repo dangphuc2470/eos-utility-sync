@@ -94,12 +94,12 @@ class AppTheme {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         switchTheme: SwitchThemeData(
-          thumbColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) return Colors.white;
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return Colors.white;
             return textSecondary;
           }),
-          trackColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) return accentMid;
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return accentMid;
             return surfaceAlt;
           }),
         ),

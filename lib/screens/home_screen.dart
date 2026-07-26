@@ -215,13 +215,32 @@ class _HomeScreenState extends State<HomeScreen> {
           (v) => v.key == key && v.alias == stored,
           orElse: () => VersionState(key: key, displayName: '', alias: stored),
         );
-        if (storedVer.localSettings != null &&
-            _areSettingsEqual(
-              storedVer.localSettings!,
-              activeVer.localSettings!,
-            )) {
-          _activeAliases[key] = stored;
-          matched = true;
+        if (storedVer.localSettings != null) {
+          if (!_areSettingsEqual(
+                storedVer.localSettings!,
+                activeVer.localSettings!,
+              ) &&
+              activeVer.localPath != null &&
+              storedVer.localPath != null) {
+            try {
+              final activeFile = File(activeVer.localPath!);
+              final storedFile = File(storedVer.localPath!);
+              if (activeFile.existsSync() && storedFile.existsSync()) {
+                await activeFile.copy(storedFile.path);
+                storedVer.localSettings = Map<String, String>.from(
+                  activeVer.localSettings!,
+                );
+                storedVer.localLastModified = storedFile.lastModifiedSync();
+              }
+            } catch (_) {}
+          }
+          if (_areSettingsEqual(
+            storedVer.localSettings!,
+            activeVer.localSettings!,
+          )) {
+            _activeAliases[key] = stored;
+            matched = true;
+          }
         }
       }
 
@@ -320,9 +339,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final alias = parts[1];
 
       String displayName = '';
-      if (key == 'EOS_Utility')
+      if (key == 'EOS_Utility') {
         displayName = 'EOS Utility';
-      else if (key == 'EOS_Utility_2')
+      } else if (key == 'EOS_Utility_2')
         displayName = 'EOS Utility 2';
       else if (key == 'EOS_Utility_3')
         displayName = 'EOS Utility 3';
@@ -442,6 +461,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 version.localLastModified = lastMod;
                 updatedAny = true;
 
+                // If this is the active config ('active'), sync changes to the currently checked-out branch (e.g. '6d')
+                if (version.alias == 'active') {
+                  final prefs = await SharedPreferences.getInstance();
+                  final currentActiveAlias =
+                      prefs.getString('active_alias_${version.key}') ??
+                      _activeAliases[version.key];
+                  if (currentActiveAlias != null &&
+                      currentActiveAlias.isNotEmpty &&
+                      currentActiveAlias != 'active') {
+                    final sibVer = _versions.firstWhere(
+                      (v) =>
+                          v.key == version.key &&
+                          v.alias == currentActiveAlias,
+                      orElse: () => VersionState(
+                        key: version.key,
+                        displayName: '',
+                        alias: currentActiveAlias,
+                      ),
+                    );
+                    if (sibVer.localPath != null) {
+                      final sibFile = File(sibVer.localPath!);
+                      if (sibFile.existsSync()) {
+                        try {
+                          await file.copy(sibFile.path);
+                          sibVer.localSettings = Map<String, String>.from(
+                            localSettings,
+                          );
+                          sibVer.localLastModified = sibFile
+                              .lastModifiedSync();
+                          _activeAliases[version.key] = currentActiveAlias;
+
+                          if (_autoPush) {
+                            sibVer.remoteSettings = Map<String, String>.from(
+                              localSettings,
+                            );
+                            sibVer.remoteLastModified =
+                                sibVer.localLastModified;
+                            final sibDriveFolder =
+                                '${sibVer.key}_${sibVer.alias}';
+                            _service
+                                .uploadSettingsToDrive(
+                                  settings: localSettings,
+                                  driveBase: _driveBase,
+                                  appFilter: sibDriveFolder,
+                                )
+                                .catchError((_) {});
+                          }
+                        } catch (_) {}
+                      }
+                    }
+                  }
+                }
+
                 // Active push
                 if (_autoPush) {
                   version.remoteSettings = Map<String, String>.from(
@@ -519,8 +591,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _selectVersion(String key, String alias, bool isRemote) {
     if (_selectedVersionKey == key &&
         _selectedAlias == alias &&
-        _selectedIsRemote == isRemote)
+        _selectedIsRemote == isRemote) {
       return;
+    }
     setState(() {
       _selectedVersionKey = key;
       _selectedAlias = alias;
@@ -581,7 +654,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _reconstructCustomizeValue(List<String> segments) {
-    return segments.join('|') + '|';
+    return '${segments.join('|')}|';
   }
 
   void _checkForChanges() {
@@ -759,6 +832,75 @@ class _HomeScreenState extends State<HomeScreen> {
       await _loadAll();
     } catch (e) {
       _showStatus('Checkout failed: $e', error: true);
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _syncFromActiveConfig(VersionState version) async {
+    if (version.alias == 'active') return;
+
+    setState(() => _loading = true);
+    try {
+      final activeVer = _versions.firstWhere(
+        (v) => v.key == version.key && v.alias == 'active',
+        orElse: () => VersionState(
+          key: version.key,
+          displayName: '',
+          alias: 'active',
+        ),
+      );
+
+      if (activeVer.localPath == null || activeVer.localSettings == null) {
+        throw 'Main active user.config not found!';
+      }
+
+      final activeFile = File(activeVer.localPath!);
+      if (!activeFile.existsSync()) {
+        throw 'Main active user.config file does not exist!';
+      }
+
+      String? targetPath = version.localPath;
+      targetPath ??= await _getOrCreateLocalPath(version.key, version.alias);
+
+      final targetFile = File(targetPath);
+      if (!targetFile.parent.existsSync()) {
+        targetFile.parent.createSync(recursive: true);
+      }
+
+      await activeFile.copy(targetFile.path);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('active_alias_${version.key}', version.alias);
+      _activeAliases[version.key] = version.alias;
+
+      version.localPath = targetFile.path;
+      version.localSettings = Map<String, String>.from(
+        activeVer.localSettings!,
+      );
+      version.localLastModified = targetFile.lastModifiedSync();
+
+      if (_autoPush) {
+        version.remoteSettings = Map<String, String>.from(
+          version.localSettings!,
+        );
+        version.remoteLastModified = version.localLastModified;
+        final driveFolder = '${version.key}_${version.alias}';
+        await _service
+            .uploadSettingsToDrive(
+              settings: version.localSettings!,
+              driveBase: _driveBase,
+              appFilter: driveFolder,
+            )
+            .catchError((_) {});
+      }
+
+      _showStatus(
+        'Synced branch "${version.alias}" with Main Active config & set as ACTIVE!',
+      );
+      await _loadAll();
+    } catch (e) {
+      _showStatus('Sync Active failed: $e', error: true);
     } finally {
       setState(() => _loading = false);
     }
@@ -1163,18 +1305,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Widget> _buildRowMenuChildren(VersionState version, bool isRemote) {
     final menuButtonStyle = ButtonStyle(
-      foregroundColor: MaterialStateProperty.all(AppTheme.textPrimary),
-      backgroundColor: MaterialStateProperty.resolveWith<Color?>((states) {
-        if (states.contains(MaterialState.hovered)) {
-          return AppTheme.accentSoft.withOpacity(0.3);
+      foregroundColor: WidgetStateProperty.all(AppTheme.textPrimary),
+      backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+        if (states.contains(WidgetState.hovered)) {
+          return AppTheme.accentSoft.withValues(alpha: 0.3);
         }
         return Colors.transparent;
       }),
-      padding: MaterialStateProperty.all(
+      padding: WidgetStateProperty.all(
         const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
-      minimumSize: MaterialStateProperty.all(const Size(180, 40)),
-      overlayColor: MaterialStateProperty.all(Colors.transparent),
+      minimumSize: WidgetStateProperty.all(const Size(180, 40)),
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
     );
 
     if (isRemote) {
@@ -1227,6 +1369,19 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 13),
             ),
           ),
+          MenuItemButton(
+            style: menuButtonStyle,
+            leadingIcon: const Icon(
+              Icons.sync_rounded,
+              color: AppTheme.accent,
+              size: 18,
+            ),
+            onPressed: () => _syncFromActiveConfig(version),
+            child: const Text(
+              'Sync Active (From Main)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
           SubmenuButton(
             style: menuButtonStyle,
             leadingIcon: const Icon(
@@ -1236,13 +1391,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             alignmentOffset: const Offset(10, 10),
             menuStyle: MenuStyle(
-              backgroundColor: MaterialStateProperty.all(AppTheme.surface),
-              surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
-              shadowColor: MaterialStateProperty.all(
-                Colors.black.withOpacity(0.2),
+              backgroundColor: WidgetStateProperty.all(AppTheme.surface),
+              surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+              shadowColor: WidgetStateProperty.all(
+                Colors.black.withValues(alpha: 0.2),
               ),
-              elevation: MaterialStateProperty.all(8),
-              shape: MaterialStateProperty.all(
+              elevation: WidgetStateProperty.all(8),
+              shape: WidgetStateProperty.all(
                 RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: const BorderSide(color: AppTheme.border),
@@ -1280,7 +1435,36 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ];
       } else {
+        final currentActiveAlias = _activeAliases[version.key];
         return [
+          if (currentActiveAlias != null && currentActiveAlias.isNotEmpty) ...[
+            MenuItemButton(
+              style: menuButtonStyle,
+              leadingIcon: const Icon(
+                Icons.sync_rounded,
+                color: AppTheme.accent,
+                size: 18,
+              ),
+              onPressed: () {
+                final targetVer = _versions.firstWhere(
+                  (v) => v.key == version.key && v.alias == currentActiveAlias,
+                  orElse: () => VersionState(
+                    key: version.key,
+                    displayName: '',
+                    alias: currentActiveAlias,
+                  ),
+                );
+                _syncFromActiveConfig(targetVer);
+              },
+              child: Text(
+                'Sync Active to "$currentActiveAlias"',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
           MenuItemButton(
             style: menuButtonStyle,
             leadingIcon: const Icon(
@@ -1303,13 +1487,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             alignmentOffset: const Offset(10, 10),
             menuStyle: MenuStyle(
-              backgroundColor: MaterialStateProperty.all(AppTheme.surface),
-              surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
-              shadowColor: MaterialStateProperty.all(
-                Colors.black.withOpacity(0.2),
+              backgroundColor: WidgetStateProperty.all(AppTheme.surface),
+              surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+              shadowColor: WidgetStateProperty.all(
+                Colors.black.withValues(alpha: 0.2),
               ),
-              elevation: MaterialStateProperty.all(8),
-              shape: MaterialStateProperty.all(
+              elevation: WidgetStateProperty.all(8),
+              shape: WidgetStateProperty.all(
                 RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: const BorderSide(color: AppTheme.border),
@@ -1442,7 +1626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppTheme.accentSoft,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: AppTheme.accent.withOpacity(0.25),
+                              color: AppTheme.accent.withValues(alpha: 0.25),
                               width: 0.8,
                             ),
                           ),
@@ -1464,7 +1648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             vertical: 1.5,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.12),
+                            color: Colors.green.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -1503,8 +1687,9 @@ class _HomeScreenState extends State<HomeScreen> {
     bool hadAny = false;
 
     for (final v in _versions) {
-      if (v.key == targetVersion.key && v.alias == targetVersion.alias)
+      if (v.key == targetVersion.key && v.alias == targetVersion.alias) {
         continue;
+      }
 
       final isActiveBranch =
           _activeAliases[v.key] == v.alias ||
@@ -1883,7 +2068,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       onChanged: (val) => setStateDialog(() {
-                        for (final d in diffs) d.selected = val ?? false;
+                        for (final d in diffs) {
+                          d.selected = val ?? false;
+                        }
                       }),
                     ),
                     const Divider(color: AppTheme.border, height: 1),
@@ -1930,14 +2117,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     vertical: 8,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withOpacity(
-                                                  0.06,
+                                                color: Colors.green.withValues(
+                                                  alpha: 0.06,
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
                                                   color: Colors.green
-                                                      .withOpacity(0.12),
+                                                      .withValues(alpha: 0.12),
                                                 ),
                                               ),
                                               child: Column(
@@ -1990,12 +2177,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   ),
                                               decoration: BoxDecoration(
                                                 color: Colors.orange
-                                                    .withOpacity(0.06),
+                                                    .withValues(alpha: 0.06),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
                                                   color: Colors.orange
-                                                      .withOpacity(0.12),
+                                                      .withValues(alpha: 0.12),
                                                 ),
                                               ),
                                               child: Column(
@@ -2194,7 +2381,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    final parentPath = '$_localBase\\${appFilter}.exe_Url_default\\1.0.0.0';
+    final parentPath = '$_localBase\\$appFilter.exe_Url_default\\1.0.0.0';
     if (targetAlias == 'active') {
       return '$parentPath\\user.config';
     } else {
@@ -2574,7 +2761,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ...List.generate(6, (index) {
             final selectedType = segTypes[index];
             final segVal = segments[index];
-            final controllerKey = '${key}_seg_${index}';
+            final controllerKey = '${key}_seg_$index';
             final controller = _getController(
               controllerKey,
               selectedType == 'custom' ? segVal : '',
@@ -2606,7 +2793,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                      value: tagOptions.containsKey(selectedType)
+                      initialValue: tagOptions.containsKey(selectedType)
                           ? selectedType
                           : 'custom',
                       dropdownColor: AppTheme.surface,
@@ -2692,7 +2879,7 @@ class _HomeScreenState extends State<HomeScreen> {
         alignment: Alignment.centerLeft,
         child: Switch(
           value: value == 'True',
-          activeColor: AppTheme.accent,
+          activeThumbColor: AppTheme.accent,
           onChanged: (val) => setState(() {
             _editedSettings[key] = (val == true) ? 'True' : 'False';
             _checkForChanges();
@@ -2795,7 +2982,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _buildRowWrapper(
       labelText: _formatKey(key),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         dropdownColor: AppTheme.surface,
         style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
         decoration: const InputDecoration(
@@ -2810,11 +2997,12 @@ class _HomeScreenState extends State<HomeScreen> {
             )
             .toList(),
         onChanged: (val) {
-          if (val != null)
+          if (val != null) {
             setState(() {
               _editedSettings[key] = val;
               _checkForChanges();
             });
+          }
         },
       ),
     );
@@ -2862,7 +3050,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Thin visual divider
               VerticalDivider(
                 width: 1,
-                color: AppTheme.border.withOpacity(0.5),
+                color: AppTheme.border.withValues(alpha: 0.5),
               ),
 
               // ── RIGHT SIDE: Form Editor ───────────────────────
@@ -2972,7 +3160,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Panel Header
             Container(
               padding: const EdgeInsets.all(16),
-              color: AppTheme.accentSoft.withOpacity(0.3),
+              color: AppTheme.accentSoft.withValues(alpha: 0.3),
               child: Row(
                 children: [
                   Container(
@@ -3242,7 +3430,7 @@ class _HomeScreenState extends State<HomeScreen> {
           statusBadge = Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.08),
+              color: Colors.blue.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Text(
@@ -3258,7 +3446,7 @@ class _HomeScreenState extends State<HomeScreen> {
           statusBadge = Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.08),
+              color: Colors.green.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Text(
@@ -3305,7 +3493,7 @@ class _HomeScreenState extends State<HomeScreen> {
           statusBadge = Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.08),
+              color: Colors.orange.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Text(
@@ -3353,7 +3541,7 @@ class _HomeScreenState extends State<HomeScreen> {
         statusBadge = Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.purple.withOpacity(0.08),
+            color: Colors.purple.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(4),
           ),
           child: const Text(
@@ -3393,7 +3581,7 @@ class _HomeScreenState extends State<HomeScreen> {
         statusBadge = Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.08),
+            color: Colors.red.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(4),
           ),
           child: const Text(
@@ -3448,12 +3636,12 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.accentGlow.withOpacity(0.4)
+              ? AppTheme.accentGlow.withValues(alpha: 0.4)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? AppTheme.accent.withOpacity(0.3)
+                ? AppTheme.accent.withValues(alpha: 0.3)
                 : Colors.transparent,
             width: 1,
           ),
@@ -3500,10 +3688,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             vertical: 1.5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.accent.withOpacity(0.12),
+                            color: AppTheme.accent.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: AppTheme.accent.withOpacity(0.25),
+                              color: AppTheme.accent.withValues(alpha: 0.25),
                               width: 0.8,
                             ),
                           ),
@@ -3546,7 +3734,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            if (actionWidget != null) actionWidget,
+            ?actionWidget,
             if (hasAliases && onExpandToggle != null) ...[
               const SizedBox(width: 4),
               IconButton(
@@ -3574,11 +3762,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return MenuAnchor(
       style: MenuStyle(
         alignment: Alignment.topLeft,
-        backgroundColor: MaterialStateProperty.all(AppTheme.surface),
-        surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
-        shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.2)),
-        elevation: MaterialStateProperty.all(8),
-        shape: MaterialStateProperty.all(
+        backgroundColor: WidgetStateProperty.all(AppTheme.surface),
+        surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+        shadowColor: WidgetStateProperty.all(Colors.black.withValues(alpha: 0.2)),
+        elevation: WidgetStateProperty.all(8),
+        shape: WidgetStateProperty.all(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: AppTheme.border),
@@ -3901,12 +4089,12 @@ class _ToastOverlayState extends State<_ToastOverlay>
                   color: bgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: borderColor.withOpacity(0.5),
+                    color: borderColor.withValues(alpha: 0.5),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),
@@ -3919,7 +4107,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: iconColor.withOpacity(0.12),
+                        color: iconColor.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

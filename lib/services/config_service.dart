@@ -117,8 +117,9 @@ class ConfigService {
         // Only accept EOS_Utility-related folders; reject Windows VirtualStore URL/hash variants
         if (!appName.contains('EOS_Utility') ||
             appName.contains('_Url_') ||
-            appName.contains('_Hash_'))
+            appName.contains('_Hash_')) {
           continue;
+        }
 
         for (final versionDir in appDir.listSync().whereType<Directory>()) {
           final versionName = versionDir.uri.pathSegments
@@ -355,8 +356,9 @@ class ConfigService {
         // Only accept EOS_Utility-related folders; reject Windows VirtualStore URL/hash variants
         if (!appName.contains('EOS_Utility') ||
             appName.contains('_Url_') ||
-            appName.contains('_Hash_'))
+            appName.contains('_Hash_')) {
           continue;
+        }
 
         // 1. Check for legacy folder format (e.g. EOS_Utility_3_5d2)
         bool handledAsLegacy = false;
