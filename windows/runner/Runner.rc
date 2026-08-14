@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "canon_sync" "\0"
+            VALUE "CompanyName", "dangphuc2470" "\0"
+            VALUE "FileDescription", "EOS Utility Sync" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "canon_sync" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "canon_sync.exe" "\0"
-            VALUE "ProductName", "canon_sync" "\0"
+            VALUE "InternalName", "eos_utility_sync" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 dangphuc2470. All rights reserved." "\0"
+            VALUE "OriginalFilename", "EOS Utility Sync.exe" "\0"
+            VALUE "ProductName", "EOS Utility Sync" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
