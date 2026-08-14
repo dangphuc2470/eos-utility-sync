@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import '../models/config_slot.dart';
 import '../services/config_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/window_title_bar.dart';
 
 class VersionState {
   final String key; // "EOS_Utility", "EOS_Utility_2", "EOS_Utility_3"
@@ -3058,6 +3060,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
+          // Window control buttons in top-right
+          const Positioned(
+            top: 0,
+            right: 0,
+            child: WindowCaptionButtons(),
+          ),
+
           // Global loading overlay
           if (_loading)
             Container(
@@ -3074,44 +3083,46 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── UI Components ──────────────────────────────────────────
 
   Widget _buildHeader(String pcName) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  pcName.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+    return DragToMoveArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    pcName.toUpperCase(),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Text(
-                  'Canon Sync Manager',
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                  const Text(
+                    'EOS Utility Sync',
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          _buildToolIcon(
-            Icons.cloud_download_outlined,
-            'Fetch from Drive',
-            _fetchFromDrive,
-          ),
-          const SizedBox(width: 4),
-          _buildToolIcon(Icons.settings_outlined, 'Settings', _openSettings),
-        ],
+            _buildToolIcon(
+              Icons.cloud_download_outlined,
+              'Fetch from Drive',
+              _fetchFromDrive,
+            ),
+            const SizedBox(width: 4),
+            _buildToolIcon(Icons.settings_outlined, 'Settings', _openSettings),
+          ],
+        ),
       ),
     );
   }
@@ -3788,42 +3799,44 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRightEditorPanel() {
     final slot = _selectedSlot;
     if (slot == null) {
-      return Container(
-        color: AppTheme.bg,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(
-                  color: AppTheme.accentSoft,
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.settings_suggest_rounded,
-                    size: 44,
-                    color: AppTheme.accent,
+      return DragToMoveArea(
+        child: Container(
+          color: AppTheme.bg,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.accentSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.settings_suggest_rounded,
+                      size: 44,
+                      color: AppTheme.accent,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'No configuration selected',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 16),
+                const Text(
+                  'No configuration selected',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Select a configuration slot from the left to edit settings.',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-              ),
-            ],
+                const SizedBox(height: 8),
+                const Text(
+                  'Select a configuration slot from the left to edit settings.',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -3838,66 +3851,68 @@ class _HomeScreenState extends State<HomeScreen> {
       color: AppTheme.bg,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        slot.name,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
+          DragToMoveArea(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 16, 140, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          slot.name,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Editing: ${activeGroup.title}',
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                        Text(
+                          'Editing: ${activeGroup.title}',
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_hasChanges) ...[
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Discard'),
-                    onPressed: _discardChanges,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      minimumSize: const Size(0, 36),
-                      backgroundColor: Colors.white,
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text('Save'),
-                    onPressed: _saveChanges,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                  if (_hasChanges) ...[
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Discard'),
+                      onPressed: _discardChanges,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        minimumSize: const Size(0, 36),
+                        backgroundColor: Colors.white,
                       ),
-                      minimumSize: const Size(0, 36),
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: Colors.white,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Save'),
+                      onPressed: _saveChanges,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        minimumSize: const Size(0, 36),
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           SingleChildScrollView(

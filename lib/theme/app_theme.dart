@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color bg = Color(0xFFF2F8F4); // light green-tinted background
+  static const Color bg = Color(0xFFFDF7F7); // light red-tinted background
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceAlt = Color(0xFFE6F4EA); // soft green container
-  static const Color border = Color(0xFFC8E6C9); // soft green border
-  static const Color accent = Color(0xFF2E7D32); // deep material green
-  static const Color accentMid = Color(0xFF43A047); // medium green (buttons)
-  static const Color accentSoft = Color(0xFFE8F5E9); // soft green background
-  static const Color accentGlow = Color(0xFFC8E6C9); // green glow / selection
-  static const Color green = Color(0xFF388E3C); // success green (same family)
+  static const Color surfaceAlt = Color(0xFFFDECEE); // soft red container
+  static const Color border = Color(0xFFFFCDD2); // soft red border
+  static const Color accent = Color(0xFFD32F2F); // deep material red
+  static const Color accentMid = Color(0xFFE53935); // medium red (buttons)
+  static const Color accentSoft = Color(0xFFFFEBEE); // soft red background
+  static const Color accentGlow = Color(0xFFFFCDD2); // red glow / selection
+  static const Color green = Color(0xFF388E3C); // success green
   static const Color greenSoft = Color(0xFFD1E7DD);
   static const Color amber = Color(0xFFFFC107); // warning yellow
   static const Color amberSoft = Color(0xFFFFF3CD);
-  static const Color textPrimary = Color(0xFF1B2E1C);
-  static const Color textSecondary = Color(0xFF3E5640);
-  static const Color textMuted = Color(0xFF6A8A6D);
+  static const Color textPrimary = Color(0xFF1E1B1B);
+  static const Color textSecondary = Color(0xFF4E4444);
+  static const Color textMuted = Color(0xFF857373);
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
